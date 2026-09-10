@@ -1,4 +1,4 @@
-import { StreamChunkEvent, StreamConnection, StreamFail, StreamMessageEvent, StreamOpenEvent } from '../interface.uts'
+import { StreamConnectOptions, StreamChunkEvent, StreamConnection, StreamFail, StreamMessageEvent, StreamOpenEvent } from '../interface.uts'
 
 export class StreamConnectionImpl implements StreamConnection {
   private openCallback: ((evt: StreamOpenEvent) => void) | null = null
@@ -8,6 +8,14 @@ export class StreamConnectionImpl implements StreamConnection {
   private completeCallback: (() => void) | null = null
   private aborter: (() => void) | null = null
   private completed: boolean = false
+
+  constructor(options: StreamConnectOptions) {
+    this.openCallback = options.onOpen ?? null
+    this.chunkCallback = options.onChunk ?? null
+    this.messageCallback = options.onMessage ?? null
+    this.errorCallback = options.onError ?? null
+    this.completeCallback = options.onComplete ?? null
+  }
 
   setAborter(aborter: (() => void) | null): void {
     this.aborter = aborter

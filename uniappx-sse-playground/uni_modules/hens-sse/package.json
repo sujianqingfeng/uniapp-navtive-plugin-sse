@@ -1,22 +1,20 @@
 {
 	"id": "hens-sse",
 	"displayName": "SSE 流式请求插件，支持非标 SSE",
-	"version": "2.0.1",
+	"version": "2.0.2",
 	"description": "适用于 uni-app 与 uni-app x 的 SSE、Line、JSONL、Raw 流式请求插件",
 	"keywords": [
-		"hens-sse",
-		"sse",
-		"stream",
-		"jsonl",
-		"uni-app",
-		"uni-app-x",
-		"harmony"
-	],
+        "sse",
+        "stream",
+        "jsonl",
+        "uni-app",
+        "harmony"
+    ],
 	"repository": "",
 	"engines": {
 		"HBuilderX": "^3.6.8",
-		"uni-app": "^3.1.0",
-		"uni-app-x": "^3.1.0"
+		"uni-app": "^5.24",
+		"uni-app-x": "^5.24"
 	},
 	"dcloudext": {
 		"type": "uts",
@@ -32,40 +30,40 @@
 			"qq": ""
 		},
 		"declaration": {
-			"ads": "",
-			"data": "",
-			"permissions": ""
+			"ads": "无",
+			"data": "无",
+			"permissions": "无"
 		},
 		"npmurl": "",
-		"darkmode": "-",
-		"i18n": "-",
-		"widescreen": "-"
+		"darkmode": "x",
+		"i18n": "x",
+		"widescreen": "x"
 	},
 	"uni_modules": {
 		"dependencies": [],
 		"encrypt": [],
 		"platforms": {
 			"cloud": {
-				"tcb": "-",
-				"aliyun": "-",
-				"alipay": "-"
+				"tcb": "x",
+				"aliyun": "x",
+				"alipay": "x"
 			},
 			"client": {
 				"uni-app": {
 					"vue": {
-						"vue2": "✓",
-						"vue3": "✓"
+						"vue2": "√",
+						"vue3": "√"
 					},
 					"web": {
-						"safari": "✓",
-						"chrome": "✓"
+						"safari": "-",
+						"chrome": "-"
 					},
 					"app": {
-						"vue": "✓",
+						"vue": "-",
 						"nvue": "-",
-						"android": "✓",
-						"ios": "✓",
-						"harmony": "✓"
+						"android": "√",
+						"ios": "√",
+						"harmony": "√"
 					},
 					"mp": {
 						"weixin": "-",
@@ -76,7 +74,8 @@
 						"jd": "-",
 						"harmony": "-",
 						"qq": "-",
-						"lark": "-"
+                        "lark": "-",
+                        "xhs": "-"
 					},
 					"quickapp": {
 						"huawei": "-",
@@ -85,13 +84,13 @@
 				},
 				"uni-app-x": {
 					"web": {
-						"safari": "✓",
-						"chrome": "✓"
+						"safari": "-",
+						"chrome": "-"
 					},
 					"app": {
-						"android": "✓",
-						"ios": "✓",
-						"harmony": "✓"
+						"android": "√",
+						"ios": "√",
+						"harmony": "√"
 					},
 					"mp": {
 						"weixin": "-"

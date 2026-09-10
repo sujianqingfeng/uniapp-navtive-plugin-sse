@@ -1,220 +1,66 @@
-### uniapp-navtive-plugin-sse
+# hens-sse
 
-跨平台 Server-Sent Events (SSE) 原生能力插件，支持 uni-app X 与 uni-app（Web/Android/iOS）。提供统一 UTS 接口、多连接管理、事件监听、自定义请求头（自动过滤受限头），并内置 Android 模拟器环回地址适配。
+用于 uni-app / uni-app x 的文本流式 HTTP 客户端插件，支持 Web、Android、iOS 和 Harmony，以及 SSE、按行文本、JSONL / NDJSON、原始文本 chunk 四种协议。
 
-支持的示例与子工程：
-- `uniappx-sse-playground`: uni-app X 示例（uvue/uts）
-- `sse-uniapp-v3-demo`: uni-app（Vue3）示例
-- `sse-android`: Android 原生库（AAR）与示例
-- `sse-ios-framework`: iOS 原生 Framework
-- `sse-ios-demo`: iOS Swift 示例工程（集成 Framework）
-- `sse-server`: 本地 Node.js SSE 测试服务器
+当前版本：**2.0.2**。本次更新修复初始回调时序、iOS message 数据与 UTF-8 分片问题，并补充 SSE 换行支持。完整变更见 [changelog](uniapp-sse-playground/uni_modules/hens-sse/changelog.md)。
 
+## 使用插件
 
-### 特性
+将 `hens-sse` 安装到项目的 `uni_modules/`，通过 `@/uni_modules/hens-sse` 导入 `connectStream`。
 
-- 多平台：Web、App-Android、App-iOS 一套 API
-- 多连接：支持同时打开多个 SSE 连接，按 `requestId` 隔离
-- 事件监听：支持全局与按连接监听（open/message/error/close）
-- 自定义请求头：与浏览器一致地过滤受限头名
-- Android 模拟器：自动将 `localhost/127.0.0.1/[::1]` 映射为 `10.0.2.2`
-- **新增**：Android 前台服务保活，支持后台长时间连接
-- 简单易用：统一的 UTS 接口定义，`uvue/ts/js` 直接调用
+- [安装后的 API 与使用示例](uniapp-sse-playground/uni_modules/hens-sse/readme.md)
+- [uni-app x 中的同版插件文档](uniappx-sse-playground/uni_modules/hens-sse/readme.md)
 
+初始事件监听应通过 `connectStream({ url, onOpen, onChunk, onMessage, onError, onComplete })` 一次传入。返回连接对象的 `onXxx/offXxx` 用于替换或取消监听；页面卸载时调用 `abort()`。
 
-### 目录结构
+升级到 2.0.2 后，App 需重新编译；使用自定义调试基座时也需重新制作基座。传统 uni-app Android 发送 JSON 请求体时建议先 `JSON.stringify`。如果需要完整保留响应 JSON 对象中的 `null` 字段，请使用 `autoParseJson: false`，并在 JS 回调中对 `evt.rawText` 执行 `JSON.parse`，详见插件文档中的兼容说明。
 
-```
-uniapp-navtive-plugin-sse/
-  uniappx-sse-playground/     # uni-app X 示例（含 uni_modules/sse-plugin 插件）
-  sse-uniapp-v3-demo/         # uni-app（Vue3）示例（同一套插件）
-  sse-android/                # Android 原生库与构建脚本（AAR）
-  sse-ios-framework/          # iOS 原生 Framework 与构建脚本
-  sse-ios-demo/               # iOS 示例工程（集成上述 Framework）
-  sse-server/                 # 本地 SSE 服务（Express）
-  screenshots/                # 运行截图/GIF
+## 仓库结构
+
+```text
+uniapp-sse-playground/       # 传统 uni-app 示例
+  uni_modules/hens-sse/      # 插件源码及发布文档
+uniappx-sse-playground/      # uni-app x 示例
+  uni_modules/hens-sse/      # 同步的插件源码及使用文档
+sse-server/                 # 本地流式 HTTP 测试服务
+sse-uniapp-v3-demo/          # 保留的早期 Vue3 示例
+tests/                     # 解析器、UTF-8 与原生回调回归入口
+docs/                      # 平台构建说明及验证记录
 ```
 
+Android、iOS 原生实现位于插件的 `utssdk/app-android/` 和 `utssdk/app-ios/` 内。
 
-### 快速体验
+## 运行示例
 
-1) 启动本地 SSE 服务器
+启动本地服务：
 
-```bash
+```sh
 cd sse-server
-pnpm i
+pnpm install
 pnpm dev
-# 服务器地址： http://localhost:3000
-# SSE 端点：   http://localhost:3000/sse
 ```
 
-2) 运行示例应用
+使用 HBuilderX 打开 `uniapp-sse-playground` 或 `uniappx-sse-playground`，选择目标平台运行。测试地址：
 
-- uni-app X 示例：使用 HBuilderX 打开 `uniappx-sse-playground`，选择运行到 App-Android、App-iOS 或 Web。
-- uni-app（Vue3）示例：使用 HBuilderX 打开 `sse-uniapp-v3-demo`，同上。
+- Web / iOS 模拟器：`http://localhost:3000/sse`
+- Android 模拟器：`http://10.0.2.2:3000/sse`
+- 真机：把主机名改成开发电脑的局域网 IP，并确保设备可以访问服务。
 
-提示（Android 模拟器）：请使用 `http://10.0.2.2:3000/sse` 访问宿主机服务；插件与示例已内置自动映射。
+其他协议端点为 `/line-stream`、`/jsonl-stream`、`/raw-stream`。在示例中填写地址并选择对应协议。
 
+Android 本地 HTTP 测试需配置明文网络访问；传统示例配置位于 `uniapp-sse-playground/nativeResources/android/res/xml/network_security_config.xml`。iOS 使用 HTTP 时需配置适当的 ATS 例外。Web 跨域请求需要服务端允许 CORS。
 
-### 使用方式（在页面/模块中）
+Harmony 本地 `module.har` 的生成与使用见 [鸿蒙构建说明](docs/harmony-module-har-build.md)。
 
-```ts
-import {
-  sseConnectApi,
-  sseCloseApi,
-  sseAddEventListenerApi,
-  sseRemoveEventListenerApi
-} from '@/uni_modules/sse-plugin'
+## 验证
 
-const requestId = `sse_${Date.now()}`
+本机边界测试需要 Node.js 22.18+ 与 Swift 工具链：
 
-// 可选：注册全局监听或按连接监听
-sseAddEventListenerApi({
-  requestId, // 省略则为全局监听
-  onOpen: (e) => console.log('open', e.requestId),
-  onMessage: (e) => console.log('message', e.message),
-  onError: (e) => console.error('error', e.error),
-  onClose: (e) => console.log('close', e.requestId)
-})
-
-// 启动连接（Android 模拟器建议 http://10.0.2.2:3000/sse）
-sseConnectApi({
-  url: 'http://localhost:3000/sse',
-  requestId,
-  headers: { 'User-Agent': 'UniApp-SSE-Plugin' },
-  // 前台服务配置（Android）
-  foregroundEnabled: true,
-  notifications: 'auto',
-  wakeLockEnabled: true,
-  wifiLockEnabled: true,
-  foregroundTitle: 'SSE 正在保持连接',
-  foregroundText: '后台保持连接以接收消息',
-  foregroundImportance: 'low',
-  fail: (err) => console.error('connect fail', err)
-})
-
-// 关闭连接
-sseCloseApi(requestId)
-
-// 清理（移除监听）
-sseRemoveEventListenerApi(null) // 传 null/undefined 清空全局监听
+```sh
+node --test tests/*.test.mjs
 ```
 
+- [回归测试与原生验收入口](tests/README.md)
+- [2.0.2 回调修复验证记录及已知限制](docs/TEST-hens-sse-callbacks-2026-09-10.md)
 
-### API 列表（节选）
-
-类型定义见 `uni_modules/sse-plugin/utssdk/interface.uts`
-
-```ts
-export type SSEConnectOptions = {
-  url: string
-  headers?: UTSJSONObject
-  requestId?: string
-  // 前台服务配置
-  foregroundEnabled?: boolean
-  foregroundChannelId?: string
-  foregroundChannelName?: string
-  foregroundTitle?: string
-  foregroundText?: string
-  foregroundImportance?: 'min'|'low'|'default'|'high'|'max'
-  notifications?: true | false | 'auto'
-  wakeLockEnabled?: boolean
-  wifiLockEnabled?: boolean
-  success?: (res: SSEConnectResult) => void
-  fail?: (res: SSEApiFail) => void
-  complete?: (res: any) => void
-}
-
-export type SSEEventListenerOptions = {
-  requestId?: string
-  onMessage?: (event: { requestId: string; message: string }) => void
-  onError?: (event: { requestId: string; error: string }) => void
-  onClose?: (event: { requestId: string }) => void
-  onOpen?: (event: { requestId: string; message: string }) => void
-}
-
-export declare const sseConnectApi: (options: SSEConnectOptions) => void
-export declare const sseCloseApi: (requestId: string) => void
-export declare const sseAddEventListenerApi: (options: SSEEventListenerOptions) => void
-export declare const sseRemoveEventListenerApi: (requestId?: string) => void
-export declare const closeAllSSEConnections: () => void
-```
-
-注意：插件会与浏览器一致过滤部分不安全/受限请求头（如 `accept-encoding`、`cookie`、`content-length`、`origin`、`referer`、以 `sec-`/`proxy-` 开头等）。
-
-
-### Android 原生库（AAR）构建
-
-文档：`sse-android/BUILD.md`
-
-快速命令：
-
-```bash
-cd sse-android
-./build-aar.sh -e debug            # 构建 debug 版本
-./build-aar.sh -e release          # 构建 release 版本
-./build-aar.sh -e release-minified # 构建混淆版
-```
-
-输出位置：`sse-android/sse-lib/build/outputs/aar/`
-
-脚本会自动将 AAR 复制到示例插件目录：
-`uniappx-sse-playground/uni_modules/sse-plugin/utssdk/app-android/libs/`
-
-网络安全提示：示例已提供 `network_security_config.xml` 放行本地开发域名/IP：
-`uniappx-sse-playground/nativeResources/android/res/xml/network_security_config.xml`
-
-
-### iOS Framework 构建
-
-文档：`sse-ios-framework/BUILD.md`
-
-快速命令：
-
-```bash
-cd sse-ios-framework
-./build-framework.sh            # 默认 Release，模拟器构建
-./build-framework.sh -d         # 仅设备
-./build-framework.sh -u         # 通用（模拟器+设备）
-./build-framework.sh --clean    # 清理后构建
-```
-
-脚本会将生成的 Framework 自动复制到：
-- 插件目录：`uniappx-sse-playground/uni_modules/sse-plugin/utssdk/app-ios/Frameworks/`
-- iOS Playground：`sse-ios-demo/SSEDemo/`
-
-ATS 提示：如需使用明文 HTTP 测试，请在 App 的 `Info.plist` 中配置 `NSAppTransportSecurity` 例外。
-
-
-### Web 端实现
-
-`uni_modules/sse-plugin/utssdk/web/index.js` 基于 Fetch + ReadableStream 实现，与 UTS API 对齐并支持自定义安全头部。
-
-
-### 截图
-
-![Android Demo](./screenshots/android-demo.gif)
-
-![iOS Demo](./screenshots/ios-demo.gif)
-
-![Web Demo](./screenshots/web-demo.gif)
-
-
-### 常见问题
-
-- Android 连接 http://localhost 失败？
-  - 在模拟器上请改用 `http://10.0.2.2:3000/sse`，或直接使用示例默认值；插件也会自动映射。
-
-- 自定义请求头未生效？
-  - 浏览器与原生实现会过滤受限头名（如 `cookie`、`content-length` 等），请改用允许的自定义头。
-
-- iOS 明文 HTTP 被拦截？
-  - 为开发期间测试，可在 `Info.plist` 配置 ATS 例外，或改用 HTTPS。
-
-- 如何在自己的项目中使用该插件？
-  - 将 `uniappx-sse-playground/uni_modules/sse-plugin` 复制到你的项目 `uni_modules/` 下，即可通过上述 API 使用。
-
-
-### 贡献
-
-欢迎提交 Issue 与 PR。开发时可分别在 `sse-android`、`sse-ios-framework` 构建产物，并在 `uniappx-sse-playground` 或 `sse-uniapp-v3-demo` 中联调。
+本机测试覆盖 UTS/Web 解析器与 Swift UTF-8 解码器，不替代 App 原生桥接验收。已有验收记录覆盖传统 uni-app Android/iOS 模拟器；uni-app x、Harmony 和 iOS 真机仍需运行验证。

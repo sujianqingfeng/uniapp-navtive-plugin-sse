@@ -30,12 +30,12 @@ function logDebug(enabled, requestId, stage, data = null) {
 }
 
 class WebStreamConnection {
-  constructor() {
-    this.openCallback = null
-    this.chunkCallback = null
-    this.messageCallback = null
-    this.errorCallback = null
-    this.completeCallback = null
+  constructor(options) {
+    this.openCallback = options.onOpen || null
+    this.chunkCallback = options.onChunk || null
+    this.messageCallback = options.onMessage || null
+    this.errorCallback = options.onError || null
+    this.completeCallback = options.onComplete || null
     this.completed = false
     this.aborter = null
   }
@@ -147,25 +147,25 @@ function parseSseBlock(block, autoParseJson = false) {
 
 function parseSseBuffer(buffer, final, autoParseJson = false) {
   const messages = []
-  let rest = buffer
+  // Use string splitting: the iOS UTS regexp implementation misindexes Unicode text.
+  const trailingCr = buffer.endsWith('\r')
+  let rest = buffer.split('\r\n').join('\n').split('\r').join('\n')
   while (true) {
-    let idx = rest.indexOf('\n\n')
-    let sepLen = 2
-    const altIdx = rest.indexOf('\r\n\r\n')
-    if (altIdx !== -1 && (idx === -1 || altIdx < idx)) {
-      idx = altIdx
-      sepLen = 4
-    }
-    if (idx === -1) break
-    const block = rest.slice(0, idx)
-    rest = rest.slice(idx + sepLen)
-    const msg = parseSseBlock(block, autoParseJson)
-    if (msg) messages.push(msg)
+    const index = rest.indexOf('\n\n')
+    if (index == -1) break
+    const msg = parseSseBlock(rest.slice(0, index), autoParseJson)
+    if (msg != null) messages.push(msg)
+    rest = rest.slice(index + 2)
   }
-  if (final && rest.length > 0) {
-    const msg = parseSseBlock(rest, autoParseJson)
-    if (msg) messages.push(msg)
+  if (final) {
+    if (rest.length > 0) {
+      const msg = parseSseBlock(rest, autoParseJson)
+      if (msg != null) messages.push(msg)
+    }
     rest = ''
+  } else if (trailingCr) {
+    // Preserve CR until the next chunk so a split CRLF is still one line ending.
+    rest = rest.endsWith('\n') ? rest.slice(0, -1) + '\r' : rest + '\r'
   }
   return { messages, rest }
 }
@@ -206,7 +206,7 @@ function isAbortError(err) {
 }
 
 export function connectStream(options) {
-  const connection = new WebStreamConnection()
+  const connection = new WebStreamConnection(options || {})
   const protocol = normalizeProtocol(options && options.protocol)
   const autoParseJson = !options || options.autoParseJson == null ? null : options.autoParseJson === true
   const debugEnabled = normalizeDebug(options && options.debug)

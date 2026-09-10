@@ -307,6 +307,7 @@ export default {
           : 'application/json; charset=utf-8'
       }
 
+      this.statusText = `连接中: ${protocol}`
       const connection = connectStream({
         url,
         method,
@@ -314,37 +315,34 @@ export default {
         autoParseJson,
         debug: true,
         headers,
-        body
-      })
+        body,
+        onOpen: (evt) => {
+          this.statusText = evt.statusCode > 0 ? `已连接 HTTP ${evt.statusCode}` : '已连接'
+          this.pushLog('open', this.stringifySafe(evt.headers, 'open'))
+        },
 
+        onChunk: (evt) => {
+          this.chunkCount += 1
+          this.pushLog('chunk', evt.text)
+        },
+
+        onMessage: (evt) => {
+          this.messageCount += 1
+          const eventName = evt.event != null ? evt.event : 'message'
+          this.pushLog(eventName, evt.rawText)
+        },
+
+        onError: (err) => {
+          this.statusText = `错误: ${err.errMsg}`
+          this.pushLog('error', err.errMsg)
+        },
+
+        onComplete: () => {
+          this.statusText = '已完成'
+          this.pushLog('complete', 'stream completed')
+        },
+      })
       this.activeConnection = connection
-      this.statusText = `连接中: ${protocol}`
-
-      connection.onOpen((evt) => {
-        this.statusText = evt.statusCode > 0 ? `已连接 HTTP ${evt.statusCode}` : '已连接'
-        this.pushLog('open', this.stringifySafe(evt.headers, 'open'))
-      })
-
-      connection.onChunk((evt) => {
-        this.chunkCount += 1
-        this.pushLog('chunk', evt.text)
-      })
-
-      connection.onMessage((evt) => {
-        this.messageCount += 1
-        const eventName = evt.event != null ? evt.event : 'message'
-        this.pushLog(eventName, evt.rawText)
-      })
-
-      connection.onError((err) => {
-        this.statusText = `错误: ${err.errMsg}`
-        this.pushLog('error', err.errMsg)
-      })
-
-      connection.onComplete(() => {
-        this.statusText = '已完成'
-        this.pushLog('complete', 'stream completed')
-      })
     }
   }
 }
@@ -463,6 +461,10 @@ export default {
   border: 1px solid #ede6de;
   border-radius: 4rpx;
   background-color: #f5f2ed;
+}
+
+.input {
+  height: 48px;
 }
 
 .textarea {

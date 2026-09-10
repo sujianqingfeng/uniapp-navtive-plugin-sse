@@ -363,8 +363,9 @@ function createUnknownStreamError(code: StreamErrorCode, error: Error | Business
   return createStreamError(code, `${error}`, null)
 }
 
-export const connectStream: ConnectStream = function (options: StreamConnectOptions): StreamConnection {
-  const connection = new StreamConnectionImpl()
+@UTSJS.keepAlive
+export function connectStream(options: StreamConnectOptions): StreamConnection {
+  const connection = new StreamConnectionImpl(options)
   const debugEnabled = normalizeDebug(options.debug)
 
   if (options.url.length == 0) {

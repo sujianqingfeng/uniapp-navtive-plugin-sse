@@ -245,7 +245,44 @@ export function createWangaiAgentStreamBridge({
       timeout,
       protocol: 'sse',
       autoParseJson: false,
-      debug
+      debug,
+      onOpen: (event) => {
+        if (closed) {
+          return
+        }
+        if (!isSuccessStatusCode(event?.statusCode)) {
+          return
+        }
+        safeCall(onOpen, event)
+      },
+
+      onChunk: (event) => {
+        if (closed) {
+          return
+        }
+        safeCall(onChunk, event)
+      },
+
+      onMessage: (event) => {
+        if (closed) {
+          return
+        }
+        safeCall(onMessage, event)
+      },
+
+      onError: (error) => {
+        if (closed) {
+          return
+        }
+        lastError = normalizeAgentStreamError(error)
+        safeCall(onError, lastError)
+      },
+
+      onComplete: () => {
+        finish({
+          reason: abortMeta.reason || (lastError ? 'error' : 'normal-complete')
+        })
+      },
     })
   } catch (error) {
     const normalizedError = normalizeAgentStreamError(error)
@@ -259,44 +296,6 @@ export function createWangaiAgentStreamBridge({
       abort() {}
     }
   }
-
-  connection?.onOpen?.((event) => {
-    if (closed) {
-      return
-    }
-    if (!isSuccessStatusCode(event?.statusCode)) {
-      return
-    }
-    safeCall(onOpen, event)
-  })
-
-  connection?.onChunk?.((event) => {
-    if (closed) {
-      return
-    }
-    safeCall(onChunk, event)
-  })
-
-  connection?.onMessage?.((event) => {
-    if (closed) {
-      return
-    }
-    safeCall(onMessage, event)
-  })
-
-  connection?.onError?.((error) => {
-    if (closed) {
-      return
-    }
-    lastError = normalizeAgentStreamError(error)
-    safeCall(onError, lastError)
-  })
-
-  connection?.onComplete?.(() => {
-    finish({
-      reason: abortMeta.reason || (lastError ? 'error' : 'normal-complete')
-    })
-  })
 
   return {
     abort({ silent = false, reason = '' } = {}) {

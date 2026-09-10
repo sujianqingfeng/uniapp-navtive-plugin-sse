@@ -19,6 +19,11 @@ export type StreamConnectOptions = {
   protocol?: StreamProtocol | null
   autoParseJson?: boolean | null
   debug?: boolean | null
+  onOpen?: ((evt: StreamOpenEvent) => void) | null
+  onChunk?: ((evt: StreamChunkEvent) => void) | null
+  onMessage?: ((evt: StreamMessageEvent) => void) | null
+  onError?: ((err: StreamFail) => void) | null
+  onComplete?: (() => void) | null
 }
 
 export type StreamOpenEvent = {
@@ -37,7 +42,8 @@ export type StreamData = UTSJSONObject | StreamJsonArray | string | number | boo
 export type StreamMessageEvent = {
   event?: string
   id?: string
-  data: StreamData
+  // Inline this union: an alias emits a double Optional on iOS and hides data from the JS bridge.
+  data: UTSJSONObject | StreamJsonArray | string | number | boolean | null
   rawText: string
 }
 

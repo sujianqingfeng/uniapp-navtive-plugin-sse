@@ -1,4 +1,4 @@
-import { StreamData, StreamJsonArray, StreamMessageEvent, StreamProtocol } from '../interface.uts'
+import { StreamData, StreamMessageEvent, StreamProtocol } from '../interface.uts'
 
 export type ParserResult = {
   messages: StreamMessageEvent[]
@@ -21,10 +21,12 @@ function parseDataText(dataText: string): StreamParsedData {
     return dataText
   }
   try {
-    if (looksLikeJsonObject) {
-      return new UTSJSONObject(JSON.parse(text))
-    }
-    const parsedValue = JSON.parse(text) as StreamJsonArray | null
+    // #ifdef APP-IOS
+    const parsedValue = SSEJSONParser.parse(text) as StreamParsedData
+    // #endif
+    // #ifndef APP-IOS
+    const parsedValue = JSON.parse(text) as StreamParsedData
+    // #endif
     if (parsedValue != null) return parsedValue
   } catch (_) {}
   return dataText
@@ -69,34 +71,26 @@ export function parseJsonlBuffer(buffer: string, final: boolean, autoParseJson: 
 
 export function parseSseBuffer(buffer: string, final: boolean, autoParseJson: boolean = false): ParserResult {
   const messages: StreamMessageEvent[] = []
-  let rest = buffer
-
+  // Use string splitting: the iOS UTS regexp implementation misindexes Unicode text.
+  const trailingCr = buffer.endsWith('\r')
+  let rest = buffer.split('\r\n').join('\n').split('\r').join('\n')
   while (true) {
-    let idx = rest.indexOf('\n\n')
-    let useCrlfSeparator = false
-    const altIdx = rest.indexOf('\r\n\r\n')
-    if (altIdx != -1 && (idx == -1 || altIdx < idx)) {
-      idx = altIdx
-      useCrlfSeparator = true
-    }
-    if (idx == -1) break
-
-    const block = rest.slice(0, idx)
-    if (useCrlfSeparator) {
-      rest = rest.slice(idx + 4)
-    } else {
-      rest = rest.slice(idx + 2)
-    }
-    const msg = parseSseBlock(block, autoParseJson)
+    const index = rest.indexOf('\n\n')
+    if (index == -1) break
+    const msg = parseSseBlock(rest.slice(0, index), autoParseJson)
     if (msg != null) messages.push(msg)
+    rest = rest.slice(index + 2)
   }
-
-  if (final && rest.length > 0) {
-    const msg = parseSseBlock(rest, autoParseJson)
-    if (msg != null) messages.push(msg)
+  if (final) {
+    if (rest.length > 0) {
+      const msg = parseSseBlock(rest, autoParseJson)
+      if (msg != null) messages.push(msg)
+    }
     rest = ''
+  } else if (trailingCr) {
+    // Preserve CR until the next chunk so a split CRLF is still one line ending.
+    rest = rest.endsWith('\n') ? rest.slice(0, -1) + '\r' : rest + '\r'
   }
-
   return { messages, rest }
 }
 

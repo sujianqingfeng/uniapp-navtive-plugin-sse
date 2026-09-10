@@ -228,6 +228,7 @@ export default {
         headers['Content-Type'] = typeof body == 'string' ? 'text/plain; charset=utf-8' : 'application/json; charset=utf-8'
       }
 
+      this.statusText = `连接中: ${protocol}`
       const connection: StreamConnection = connectStream({
         url,
         method,
@@ -236,30 +237,28 @@ export default {
         debug: true,
         headers,
         body,
+        onOpen: (evt) => {
+          this.statusText = evt.statusCode > 0 ? `已连接 HTTP ${evt.statusCode}` : '已连接'
+          this.pushLog('open', JSON.stringify(evt.headers) ?? 'open')
+        },
+        onChunk: (evt) => {
+          this.chunkCount += 1
+          this.pushLog('chunk', evt.text)
+        },
+        onMessage: (evt) => {
+          this.messageCount += 1
+          const eventName = evt.event != null ? evt.event : 'message'
+          this.pushLog(eventName, evt.rawText)
+        },
+        onError: (err) => {
+          this.statusText = `错误: ${err.errMsg}`
+          this.pushLog('error', err.errMsg)
+        },
+        onComplete: () => {
+          this.pushLog('complete', 'stream completed')
+        },
       })
       this.activeConnection = connection
-      this.statusText = `连接中: ${protocol}`
-
-      connection.onOpen((evt) => {
-        this.statusText = evt.statusCode > 0 ? `已连接 HTTP ${evt.statusCode}` : '已连接'
-        this.pushLog('open', JSON.stringify(evt.headers) ?? 'open')
-      })
-      connection.onChunk((evt) => {
-        this.chunkCount += 1
-        this.pushLog('chunk', evt.text)
-      })
-      connection.onMessage((evt) => {
-        this.messageCount += 1
-        const eventName = evt.event != null ? evt.event : 'message'
-        this.pushLog(eventName, evt.rawText)
-      })
-      connection.onError((err) => {
-        this.statusText = `错误: ${err.errMsg}`
-        this.pushLog('error', err.errMsg)
-      })
-      connection.onComplete(() => {
-        this.pushLog('complete', 'stream completed')
-      })
     }
   },
   onUnload() {

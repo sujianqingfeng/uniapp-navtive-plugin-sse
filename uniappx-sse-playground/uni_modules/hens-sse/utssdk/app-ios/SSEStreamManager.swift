@@ -12,20 +12,23 @@ public class SSEStreamManager: NSObject, URLSessionDataDelegate {
     public var onComplete: ((String) -> Void)?
 
     private final class StreamTaskContext {
-        let requestId: String
-        init(requestId: String) {
-            self.requestId = requestId
+        let task: URLSessionDataTask
+        let decoder = SSEUTF8Decoder()
+        init(task: URLSessionDataTask) {
+            self.task = task
         }
     }
 
-    private let queue = DispatchQueue(label: "com.hans.sseplugin.stream", attributes: .concurrent)
+    private let queue = DispatchQueue(label: "com.hans.sseplugin.stream")
     private lazy var session: URLSession = {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = TimeInterval(Int.max)
         configuration.timeoutIntervalForResource = TimeInterval(Int.max)
-        return URLSession(configuration: configuration, delegate: self, delegateQueue: OperationQueue())
+        let delegateQueue = OperationQueue()
+        delegateQueue.maxConcurrentOperationCount = 1
+        return URLSession(configuration: configuration, delegate: self, delegateQueue: delegateQueue)
     }()
-    private var taskMap: [String: URLSessionDataTask] = [:]
+    private var taskMap: [String: StreamTaskContext] = [:]
 
     public func connect(
         _ requestId: String,
@@ -62,9 +65,9 @@ public class SSEStreamManager: NSObject, URLSessionDataDelegate {
         task.taskDescription = requestId
         task.earliestBeginDate = nil
 
-        queue.async(flags: .barrier) {
-            self.taskMap[requestId]?.cancel()
-            self.taskMap[requestId] = task
+        queue.sync {
+            self.taskMap[requestId]?.task.cancel()
+            self.taskMap[requestId] = StreamTaskContext(task: task)
         }
 
         task.resume()
@@ -72,16 +75,10 @@ public class SSEStreamManager: NSObject, URLSessionDataDelegate {
     }
 
     public func abort(_ requestId: String) {
-        queue.async(flags: .barrier) {
-            if let task = self.taskMap.removeValue(forKey: requestId) {
-                task.cancel()
+        queue.sync {
+            if let context = self.taskMap.removeValue(forKey: requestId) {
+                context.task.cancel()
             }
-        }
-    }
-
-    private func removeTask(_ requestId: String) {
-        queue.async(flags: .barrier) {
-            self.taskMap.removeValue(forKey: requestId)
         }
     }
 
@@ -92,8 +89,8 @@ public class SSEStreamManager: NSObject, URLSessionDataDelegate {
         }
     }
 
-    private func emitChunk(_ requestId: String, _ data: Data) {
-        guard let text = String(data: data, encoding: .utf8), !text.isEmpty else {
+    private func emitChunk(_ requestId: String, _ text: String) {
+        guard !text.isEmpty else {
             return
         }
         DispatchQueue.main.async {
@@ -134,7 +131,10 @@ public class SSEStreamManager: NSObject, URLSessionDataDelegate {
         guard let requestId = dataTask.taskDescription else {
             return
         }
-        emitChunk(requestId, data)
+        let text = queue.sync {
+            self.taskMap[requestId]?.decoder.decode(data) ?? ""
+        }
+        emitChunk(requestId, text)
     }
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
@@ -142,7 +142,10 @@ public class SSEStreamManager: NSObject, URLSessionDataDelegate {
             return
         }
 
-        removeTask(requestId)
+        let tail = queue.sync {
+            self.taskMap.removeValue(forKey: requestId)?.decoder.decode(Data(), final: true) ?? ""
+        }
+        if error == nil { emitChunk(requestId, tail) }
 
         if let nsError = error as NSError? {
           if nsError.code != NSURLErrorCancelled {
