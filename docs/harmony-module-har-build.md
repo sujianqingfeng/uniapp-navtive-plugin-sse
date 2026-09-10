@@ -2,6 +2,8 @@
 
 本文记录如何为 `uniapp-sse-playground` 里的 `hens-sse` 插件打出鸿蒙本地包需要的 `module.har`。
 
+当前随插件提供的 HAR 已于 2026-09-10 按 2.0.2 源码重建，使用 HBuilderX 5.24、DevEco Studio 6.0.2，最低兼容 HarmonyOS API 13。构建结果、接口及字节码的新旧对比见 [本次核验记录](TEST-hens-sse-harmony-har-2026-09-10.md)。下文保留早期 CLI 构建流程及当时的工具版本。
+
 适用场景：别人打包鸿蒙时报类似下面的错误，说明插件目录里缺少已编译好的本地 HAR：
 
 ```text
